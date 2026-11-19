@@ -1,12 +1,136 @@
-html, body { margin: 0; height: 100%; background: #f2f0f4; color: #1d1b22; font: 15px/1.4 system-ui, sans-serif; }
-.app { display: flex; gap: 32px; align-items: center; justify-content: center; height: 100%; padding: 24px; box-sizing: border-box; }
-.controls { display: flex; flex-direction: column; gap: 14px; width: 280px; }
-.controls h1 { margin: 0; font-size: 28px; }
-.controls p { margin: 0; color: #5c5866; }
-label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
-input[type=text] { font: inherit; padding: 8px; border: 1px solid #c9c4d1; border-radius: 6px; }
-button { font: inherit; font-weight: 700; padding: 10px; border: 0; border-radius: 6px; background: #1d1b22; color: #fff; cursor: pointer; }
-canvas { width: min(70vh, 60vw); height: min(70vh, 60vw); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); }
-body.shot-cover .controls { display: none; }
-body.shot-cover .app { padding: 0; }
-body.shot-cover canvas { width: 100vw; height: 100vh; box-shadow: none; }
+@font-face {
+  font-family: "Vice Bold";
+  src: url("./fonts/DejaVuSans-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Vice Bold", system-ui, sans-serif;
+  background: #160a24;
+  color: #f5eefc;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 18px;
+  min-height: 100vh;
+  padding: 18px;
+}
+
+.panel { background: #221130; border-radius: 14px; padding: 18px 20px; }
+.controls { overflow-y: auto; max-height: calc(100vh - 36px); }
+.controls h1 {
+  margin: 0;
+  font-size: 30px;
+  letter-spacing: 1px;
+  color: #ff9e57;
+  text-transform: uppercase;
+}
+.controls h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 2px; color: #ff7ad9; margin: 20px 0 6px; }
+.tagline { color: #d9c8ec; font-size: 14px; line-height: 1.5; }
+.hint { color: #b9a6cc; font-size: 12px; line-height: 1.5; margin: 4px 0 10px; }
+
+label { display: block; font-size: 13px; margin: 10px 0; }
+input[type="text"], select {
+  width: 100%;
+  margin-top: 5px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  border: 1px solid #5b3a7a;
+  background: #160a24;
+  color: #fff;
+  font: inherit;
+}
+input[type="range"] { width: 100%; accent-color: #ff7ad9; }
+
+button {
+  font: inherit;
+  font-size: 13px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  border: 1px solid #5b3a7a;
+  background: #3a2052;
+  color: #fff;
+  cursor: pointer;
+}
+button:hover { background: #4c2a68; }
+button.active { background: #ff7ad9; border-color: #ff7ad9; color: #160a24; }
+button.export {
+  width: 100%;
+  margin-top: 14px;
+  padding: 13px;
+  font-size: 16px;
+  background: linear-gradient(90deg, #ff7a18, #ff2d92);
+  border: none;
+}
+button.export:hover { filter: brightness(1.12); }
+
+.file-btn {
+  display: inline-block;
+  padding: 10px 14px;
+  border-radius: 9px;
+  background: #ff7ad9;
+  color: #160a24;
+  cursor: pointer;
+}
+.file-btn input { display: none; }
+
+.row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.chip {
+  padding: 5px 9px;
+  border-radius: 20px;
+  background: #160a24;
+  border: 1px solid #5b3a7a;
+  font-size: 12px;
+}
+.chip.active { border-color: #ff9e57; color: #ff9e57; }
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.preview canvas {
+  max-width: 100%;
+  max-height: calc(100vh - 110px);
+  width: auto;
+  height: auto;
+  border-radius: 10px;
+  box-shadow: 0 12px 44px rgba(0, 0, 0, 0.6);
+  cursor: grab;
+  touch-action: none;
+}
+.preview canvas:active { cursor: grabbing; }
+
+#status { min-height: 20px; font-size: 13px; color: #9dffb0; }
+
+/* Screenshot scenes: the cover alone, edge to edge, no controls. */
+body.shot-cover { background: #000; }
+body.shot-cover .app { display: block; padding: 0; }
+body.shot-cover .controls, body.shot-cover .preview .hint { display: none; }
+body.shot-cover .preview { display: block; }
+body.shot-cover .preview canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  max-height: none;
+  border-radius: 0;
+  box-shadow: none;
+  object-fit: contain;
+  background: #000;
+}
+
+@media (max-width: 820px) {
+  .app { grid-template-columns: 1fr; }
+  .controls { max-height: none; }
+}
