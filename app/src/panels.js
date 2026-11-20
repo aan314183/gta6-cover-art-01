@@ -1,21 +1,26 @@
-// Vice Cover v3 — panel geometry and photo painting.
+// Vice Cover v4 — panel geometry, export sizes and photo painting.
 //
-// A cover is a collage of either three or four photo panels. The first
-// panel is always the hero; the rest support it. Every export size gets
-// its own arrangement, and the three-panel arrangement is its own layout
-// rather than the four-panel one with a hole in it. A panel rectangle is
-// stored as fractions of the cover: [left, top, width, height].
+// A cover is a collage of two, three, four or five photo panels. Panel
+// zero is always the hero; the rest support it. Every panel count gets
+// its own arrangement for every export size, so a layout is never a
+// bigger one with a hole in it. A panel rectangle is stored as fractions
+// of the cover: [left, top, width, height].
 //
-// The dark gutters are just the cover background showing between panels.
-// On top of that the user picks a frame style for each panel: none, a
-// hairline, a bold line, or a dashed line.
+// New in v4: a 2-panel cinematic split (hero plus one tall side panel)
+// and a 5-panel mosaic (hero plus a four-tile block), plus a story
+// export size, 1080 x 1920. The dark gutters are the cover background
+// showing between panels, and the user picks a frame style for each
+// panel: none, hairline, bold or dashed.
 
-export const PANEL_LABELS = ['Hero', 'Top support', 'Bottom support', 'Wide strip'];
+export const PANEL_LABELS = ['Hero', 'Sidekick', 'Top support', 'Bottom support', 'Wide strip'];
+
+export const PANEL_COUNTS = [2, 3, 4, 5];
 
 export const EXPORT_SIZES = {
   square: { width: 1080, height: 1080, label: '1080 × 1080' },
   portrait: { width: 1080, height: 1350, label: '1080 × 1350' },
   wide: { width: 1920, height: 1080, label: '1920 × 1080' },
+  story: { width: 1080, height: 1920, label: '1080 × 1920' },
 };
 
 export const DIVIDER_STYLES = {
@@ -27,21 +32,53 @@ export const DIVIDER_STYLES = {
 
 export const DIVIDER_KEYS = Object.keys(DIVIDER_STYLES);
 
-const GAP = 0.014;
-
 function box(x, y, w, h) {
   return [x, y, w, h];
 }
 
-// Four panels: hero plus three supporters, arranged per size.
-function fourPanelLayout(sizeKey) {
-  const g = GAP;
-  if (sizeKey === 'portrait') {
+// Two panels: cinematic split. Wide covers put the hero left and the
+// sidekick tall on the right; tall covers stack them.
+function twoPanelLayout(sizeKey) {
+  if (sizeKey === 'wide') {
+    return [box(0, 0, 0.62, 1), box(0.634, 0, 0.366, 1)];
+  }
+  if (sizeKey === 'story') {
+    return [box(0, 0, 1, 0.66), box(0, 0.674, 1, 0.326)];
+  }
+  return [box(0, 0, 1, 0.62), box(0, 0.634, 1, 0.366)];
+}
+
+// Three panels: hero plus two supporters.
+function threePanelLayout(sizeKey) {
+  if (sizeKey === 'portrait' || sizeKey === 'story') {
     return [
-      box(0, 0, 1, 0.54),
-      box(0, 0.554, 0.493, 0.21),
-      box(0.507, 0.554, 0.493, 0.21),
-      box(0, 0.778, 1, 0.222),
+      box(0, 0, 1, 0.58),
+      box(0, 0.594, 0.493, 0.406),
+      box(0.507, 0.594, 0.493, 0.406),
+    ];
+  }
+  if (sizeKey === 'wide') {
+    return [
+      box(0, 0, 0.55, 1),
+      box(0.564, 0, 0.436, 0.493),
+      box(0.564, 0.507, 0.436, 0.493),
+    ];
+  }
+  return [
+    box(0, 0, 1, 0.62),
+    box(0, 0.634, 0.493, 0.366),
+    box(0.507, 0.634, 0.493, 0.366),
+  ];
+}
+
+// Four panels: hero plus three supporters.
+function fourPanelLayout(sizeKey) {
+  if (sizeKey === 'portrait' || sizeKey === 'story') {
+    return [
+      box(0, 0, 1, 0.52),
+      box(0, 0.534, 0.493, 0.21),
+      box(0.507, 0.534, 0.493, 0.21),
+      box(0, 0.758, 1, 0.242),
     ];
   }
   if (sizeKey === 'wide') {
@@ -60,37 +97,65 @@ function fourPanelLayout(sizeKey) {
   ];
 }
 
-// Three panels: hero plus two supporters, arranged per size.
-function threePanelLayout(sizeKey) {
-  const g = GAP;
-  if (sizeKey === 'portrait') {
-    return [
-      box(0, 0, 1, 0.6),
-      box(0, 0.614, 0.493, 0.386),
-      box(0.507, 0.614, 0.493, 0.386),
-    ];
-  }
+// Five panels: mosaic. The hero holds one side and four small tiles
+// fill the other side, like a contact sheet of the same night.
+function fivePanelLayout(sizeKey) {
   if (sizeKey === 'wide') {
     return [
-      box(0, 0, 0.55, 1),
-      box(0.564, 0, 0.436, 0.493),
-      box(0.564, 0.507, 0.436, 0.493),
+      box(0, 0, 0.5, 1),
+      box(0.514, 0, 0.236, 0.493),
+      box(0.764, 0, 0.236, 0.493),
+      box(0.514, 0.507, 0.236, 0.493),
+      box(0.764, 0.507, 0.236, 0.493),
+    ];
+  }
+  if (sizeKey === 'story') {
+    return [
+      box(0, 0, 1, 0.46),
+      box(0, 0.474, 0.493, 0.256),
+      box(0.507, 0.474, 0.493, 0.256),
+      box(0, 0.744, 0.493, 0.256),
+      box(0.507, 0.744, 0.493, 0.256),
+    ];
+  }
+  if (sizeKey === 'portrait') {
+    return [
+      box(0, 0, 1, 0.5),
+      box(0, 0.514, 0.493, 0.23),
+      box(0.507, 0.514, 0.493, 0.23),
+      box(0, 0.758, 0.493, 0.242),
+      box(0.507, 0.758, 0.493, 0.242),
     ];
   }
   return [
-    box(0, 0, 1, 0.62),
-    box(0, 0.634, 0.493, 0.366),
-    box(0.507, 0.634, 0.493, 0.366),
+    box(0, 0, 0.58, 0.58),
+    box(0.594, 0, 0.406, 0.283),
+    box(0.594, 0.297, 0.406, 0.283),
+    box(0, 0.594, 0.493, 0.406),
+    box(0.507, 0.594, 0.493, 0.406),
   ];
 }
 
 export function layoutFor(sizeKey, panelCount) {
-  return panelCount === 3 ? threePanelLayout(sizeKey) : fourPanelLayout(sizeKey);
+  if (panelCount === 2) return twoPanelLayout(sizeKey);
+  if (panelCount === 3) return threePanelLayout(sizeKey);
+  if (panelCount === 5) return fivePanelLayout(sizeKey);
+  return fourPanelLayout(sizeKey);
 }
 
 // How many panels the cover actually shows right now.
 export function visiblePanels(state) {
-  return state.panelCount === 3 ? 3 : 4;
+  return PANEL_COUNTS.includes(state.panelCount) ? state.panelCount : 4;
+}
+
+// Merges the grade filter with a panel's own brightness / contrast /
+// saturation tweaks into one canvas filter string.
+export function panelFilter(gradeFilter, panel) {
+  const bright = panel.bright == null ? 1 : panel.bright;
+  const contrast = panel.contrast == null ? 1 : panel.contrast;
+  const sat = panel.sat == null ? 1 : panel.sat;
+  const tweaks = `brightness(${bright}) contrast(${contrast}) saturate(${sat})`;
+  return gradeFilter ? `${gradeFilter} ${tweaks}` : tweaks;
 }
 
 // Cover-fits one photo inside its rectangle, then applies the panel's

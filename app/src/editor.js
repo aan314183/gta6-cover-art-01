@@ -1,4 +1,4 @@
-// Vice Cover v3 editor.
+// Vice Cover v4 editor.
 //
 // This module owns the whole cover state and every sidebar control, and
 // it lets the user drag a panel on the preview to pan the photo inside
@@ -7,40 +7,93 @@
 //
 // State shape:
 //   photos / photoNames — loaded Image objects and their display names
-//   panels — one slot per panel: { photoIndex, zoom, dx, dy, rotate }
+//   panels — five slots: { photoIndex, zoom, dx, dy, rotate,
+//     bright, contrast, sat } (per-panel light, new in v4)
 //   active — which panel is being edited
-//   panelCount — 3 or 4 panels on the cover (new in v3)
+//   panelCount — 2, 3, 4 or 5 panels (2 and 5 are new in v4)
 //   headline, tagline — the two lines of poster lettering
-//   align — headline/tagline alignment: left, center or right (new in v3)
-//   spacing — extra letter-spacing on the headline, in px (new in v3)
-//   badge — whether the EST. 2026 star shows (new in v3)
-//   format — export file type: png or jpeg (new in v3)
-//   grade — key into GRADES; sizeKey — key into EXPORT_SIZES
+//   align — headline/tagline alignment: left, center or right
+//   spacing — extra letter-spacing on the headline, in px
+//   headlineSize — headline size multiplier, 0.6 to 1.4 (new in v4)
+//   uppercase — headline forced to capitals (new in v4)
+//   badge — whether the EST. 2026 star shows
+//   grain — deterministic film grain on the cover (new in v4)
+//   format — export file type: png or jpeg
+//   grade — key into GRADES (vice and palm are new in v4)
+//   sizeKey — key into EXPORT_SIZES (story is new in v4)
 //   outline — headline outline thickness (0 = none)
 //   shadow, shadowAmount — headline drop shadow switch and strength
 //   divider — frame style around every panel
 //   clean — true only for an export render (no editor frame)
+//
+// One-click presets (new in v4) set a whole look at once: Heist, Beach
+// and Night Drive each pick panels, grade, size, divider and badge.
 
-import { EXPORT_SIZES, PANEL_LABELS, DIVIDER_KEYS, layoutFor, panelAtPoint, visiblePanels } from './panels.js';
+import { EXPORT_SIZES, PANEL_LABELS, PANEL_COUNTS, DIVIDER_KEYS, layoutFor, panelAtPoint, visiblePanels } from './panels.js';
 import { GRADES, GRADE_KEYS } from './grade.js';
 import { renderPoster, exportPoster } from './export.js';
 
 const MAX_PHOTOS = 3;
 
+export const PRESETS = {
+  heist: {
+    label: 'Heist',
+    headline: 'Vice Heist',
+    tagline: 'One last score · Vice City',
+    grade: 'vice',
+    panelCount: 4,
+    sizeKey: 'wide',
+    divider: 'bold',
+    badge: true,
+    grain: true,
+  },
+  beach: {
+    label: 'Beach',
+    headline: 'Palm Beach',
+    tagline: 'Sun, sand and trouble',
+    grade: 'palm',
+    panelCount: 3,
+    sizeKey: 'portrait',
+    divider: 'hairline',
+    badge: false,
+    grain: false,
+  },
+  nightdrive: {
+    label: 'Night Drive',
+    headline: 'Night Drive',
+    tagline: 'Neon streets · 2 AM',
+    grade: 'neon',
+    panelCount: 2,
+    sizeKey: 'wide',
+    divider: 'none',
+    badge: true,
+    grain: true,
+  },
+};
+
+export const PRESET_KEYS = Object.keys(PRESETS);
+
+function freshPanel() {
+  return { photoIndex: 0, zoom: 1, dx: 0, dy: 0, rotate: 0, bright: 1, contrast: 1, sat: 1 };
+}
+
 export function createState() {
   return {
     photos: [],
     photoNames: [],
-    panels: PANEL_LABELS.map(() => ({ photoIndex: 0, zoom: 1, dx: 0, dy: 0, rotate: 0 })),
+    panels: PANEL_LABELS.map(() => freshPanel()),
     active: 0,
-    panelCount: 4,
+    panelCount: 5,
     headline: 'Vice Nights',
     tagline: 'Vice City · Est. Tonight',
     align: 'left',
     spacing: 0,
+    headlineSize: 1,
+    uppercase: true,
     badge: false,
+    grain: false,
     format: 'png',
-    grade: 'dusk',
+    grade: 'vice',
     sizeKey: 'wide',
     exportSize: EXPORT_SIZES.wide,
     outline: 4,
@@ -116,6 +169,12 @@ export function startEditor() {
     byId('zoomRange').value = String(panel.zoom);
     byId('rotateRange').value = String(panel.rotate);
     byId('rotateOut').textContent = `${panel.rotate}°`;
+    byId('brightRange').value = String(panel.bright);
+    byId('brightOut').textContent = `${Math.round(panel.bright * 100)}%`;
+    byId('contrastRange').value = String(panel.contrast);
+    byId('contrastOut').textContent = `${Math.round(panel.contrast * 100)}%`;
+    byId('satRange').value = String(panel.sat);
+    byId('satOut').textContent = `${Math.round(panel.sat * 100)}%`;
     const picker = byId('panelPhotoSelect');
     picker.innerHTML = '';
     state.photos.forEach((_, i) => {
@@ -153,6 +212,58 @@ export function startEditor() {
       });
       box.appendChild(chip);
     });
+  }
+
+  // Brings every sidebar control back in step with the state — used
+  // after a preset or a staged scene changes several things at once.
+  function syncAllControls() {
+    byId('headlineInput').value = state.headline;
+    byId('taglineInput').value = state.tagline;
+    byId('headlineSizeRange').value = String(state.headlineSize);
+    byId('headlineSizeOut').textContent = `${Math.round(state.headlineSize * 100)}%`;
+    byId('uppercaseToggle').checked = state.uppercase;
+    byId('spacingRange').value = String(state.spacing);
+    byId('spacingOut').textContent = `${state.spacing} px`;
+    byId('outlineRange').value = String(state.outline);
+    byId('outlineOut').textContent = `${state.outline} px`;
+    byId('shadowToggle').checked = state.shadow;
+    byId('shadowRange').value = String(state.shadowAmount);
+    byId('badgeToggle').checked = state.badge;
+    byId('grainToggle').checked = state.grain;
+    byId('dividerSelect').value = state.divider;
+    byId('sizeSelect').value = state.sizeKey;
+    byId('formatSelect').value = state.format;
+    document.querySelectorAll('#gradePicker button').forEach((button, i) => {
+      button.classList.toggle('active', GRADE_KEYS[i] === state.grade);
+    });
+    document.querySelectorAll('#alignPicker button').forEach((button, i) => {
+      button.classList.toggle('active', ['left', 'center', 'right'][i] === state.align);
+    });
+    document.querySelectorAll('#panelCountPicker button').forEach((button, i) => {
+      button.classList.toggle('active', PANEL_COUNTS[i] === state.panelCount);
+    });
+    rebuildPanelPicker();
+    syncPanelControls();
+  }
+
+  // Applies one preset: panels, grade, size, divider, badge, grain and
+  // both lines of lettering, then repaints.
+  function applyPreset(key) {
+    const preset = PRESETS[key];
+    if (!preset) return;
+    state.headline = preset.headline;
+    state.tagline = preset.tagline;
+    state.grade = preset.grade;
+    state.panelCount = preset.panelCount;
+    state.sizeKey = preset.sizeKey;
+    state.exportSize = EXPORT_SIZES[preset.sizeKey];
+    state.divider = preset.divider;
+    state.badge = preset.badge;
+    state.grain = preset.grain;
+    if (state.active >= state.panelCount) state.active = 0;
+    syncAllControls();
+    repaint();
+    say(`${preset.label} preset applied — ${state.panelCount} panels, ${preset.grade} grade.`);
   }
 
   // The first photo fills every visible panel until the user picks otherwise.
@@ -197,6 +308,7 @@ export function startEditor() {
       state.panels[1].photoIndex = 1;
       state.panels[2].photoIndex = 1;
       state.panels[3].photoIndex = 0;
+      state.panels[4].photoIndex = 1;
       syncChips();
       syncPanelControls();
       repaint();
@@ -236,13 +348,17 @@ export function startEditor() {
     repaint();
   }, 0);
 
-  buildToggleRow('panelCountPicker', ['3 panels', '4 panels'], (i) => {
-    state.panelCount = i === 0 ? 3 : 4;
+  buildToggleRow('panelCountPicker', PANEL_COUNTS.map((n) => `${n} panels`), (i) => {
+    state.panelCount = PANEL_COUNTS[i];
     if (state.active >= state.panelCount) state.active = 0;
     rebuildPanelPicker();
     syncPanelControls();
     repaint();
-  }, 1);
+  }, PANEL_COUNTS.indexOf(state.panelCount));
+
+  buildToggleRow('presetPicker', PRESET_KEYS.map((k) => PRESETS[k].label), (i) => {
+    applyPreset(PRESET_KEYS[i]);
+  }, null);
 
   rebuildPanelPicker();
 
@@ -264,6 +380,27 @@ export function startEditor() {
     byId('rotateOut').textContent = `${event.target.value}°`;
     repaint();
   });
+  byId('brightRange').addEventListener('input', (event) => {
+    state.panels[state.active].bright = Number(event.target.value);
+    byId('brightOut').textContent = `${Math.round(event.target.value * 100)}%`;
+    repaint();
+  });
+  byId('contrastRange').addEventListener('input', (event) => {
+    state.panels[state.active].contrast = Number(event.target.value);
+    byId('contrastOut').textContent = `${Math.round(event.target.value * 100)}%`;
+    repaint();
+  });
+  byId('satRange').addEventListener('input', (event) => {
+    state.panels[state.active].sat = Number(event.target.value);
+    byId('satOut').textContent = `${Math.round(event.target.value * 100)}%`;
+    repaint();
+  });
+  byId('resetPanelBtn').addEventListener('click', () => {
+    state.panels[state.active] = { ...freshPanel(), photoIndex: state.panels[state.active].photoIndex };
+    syncPanelControls();
+    repaint();
+    say('This panel is back to its default framing and light.');
+  });
   byId('panelPhotoSelect').addEventListener('change', (event) => {
     state.panels[state.active].photoIndex = Number(event.target.value);
     syncPanelControls();
@@ -275,6 +412,15 @@ export function startEditor() {
   });
   byId('taglineInput').addEventListener('input', (event) => {
     state.tagline = event.target.value;
+    repaint();
+  });
+  byId('headlineSizeRange').addEventListener('input', (event) => {
+    state.headlineSize = Number(event.target.value);
+    byId('headlineSizeOut').textContent = `${Math.round(event.target.value * 100)}%`;
+    repaint();
+  });
+  byId('uppercaseToggle').addEventListener('change', (event) => {
+    state.uppercase = event.target.checked;
     repaint();
   });
   byId('spacingRange').addEventListener('input', (event) => {
@@ -297,6 +443,10 @@ export function startEditor() {
   });
   byId('badgeToggle').addEventListener('change', (event) => {
     state.badge = event.target.checked;
+    repaint();
+  });
+  byId('grainToggle').addEventListener('change', (event) => {
+    state.grain = event.target.checked;
     repaint();
   });
   byId('dividerSelect').addEventListener('change', (event) => {
@@ -358,5 +508,5 @@ export function startEditor() {
   syncChips();
   syncPanelControls();
   repaint();
-  return { state, repaint, loadSamples, addFiles };
+  return { state, repaint, loadSamples, addFiles, applyPreset, syncAllControls };
 }

@@ -1,15 +1,18 @@
-// Vice Cover v3 — painting the finished cover and saving it.
+// Vice Cover v4 — painting the finished cover and saving it.
 //
-// renderPoster draws a whole cover onto whatever canvas it is handed, at
-// that canvas's own size: dark background, the visible photo panels, the
-// grade wash, the caption strip, and — when switched on — the star badge
-// in the top corner. The headline honours the user's alignment choice
-// (left, centre, right) and letter-spacing, and can carry a dark outline
-// plus an optional drop shadow. exportPoster downloads the same cover
-// rendered off-screen at a real export size, as PNG or JPEG.
+// renderPoster draws a whole cover onto whatever canvas it is handed,
+// at that canvas's own size: dark background, the visible photo panels
+// (each with its own brightness / contrast / saturation), the grade
+// wash, a touch of deterministic grain, the caption band, and — when
+// switched on — the star badge in the top corner.
+//
+// The headline honours alignment (left, centre, right), letter-spacing,
+// a size multiplier, an all-caps switch, a dark outline and an optional
+// drop shadow. exportPoster downloads the same cover rendered off-screen
+// at a real export size, as PNG or JPEG.
 
-import { layoutFor, paintPhoto, visiblePanels } from './panels.js';
-import { gradeFor, paintWash } from './grade.js';
+import { layoutFor, paintPhoto, panelFilter, visiblePanels } from './panels.js';
+import { gradeFor, paintWash, paintGrain } from './grade.js';
 
 const POSTER_FONT = '"Vice Bold", sans-serif';
 
@@ -26,43 +29,52 @@ export function renderPoster(canvas, state) {
   for (let i = 0; i < shown; i += 1) {
     const panel = state.panels[i];
     const photo = state.photos[panel.photoIndex] || null;
-    paintPhoto(ctx, photo, layout[i], panel, grade.filter, state.divider);
+    const filter = panelFilter(grade.filter, panel);
+    paintPhoto(ctx, photo, layout[i], panel, filter, state.divider);
   }
   paintWash(ctx, grade);
-  paintCaptionStrip(ctx, state, grade);
+  paintGrain(ctx, state.grain ? 1 : 0);
+  paintCaptionBand(ctx, state, grade);
   if (state.badge) paintBadge(ctx, grade);
   if (!state.clean) paintActiveFrame(ctx, state, layout);
 }
 
-function textAnchorX(state, w) {
+function anchorXFor(state, w) {
   if (state.align === 'center') return w / 2;
   if (state.align === 'right') return w * 0.955;
   return w * 0.045;
 }
 
-function paintCaptionStrip(ctx, state, grade) {
+function headlineText(state) {
+  const raw = (state.headline || '').trim();
+  if (!raw) return '';
+  return state.uppercase === false ? raw : raw.toUpperCase();
+}
+
+function paintCaptionBand(ctx, state, grade) {
   const w = ctx.canvas.width;
   const h = ctx.canvas.height;
-  const stripH = h * 0.22;
-  const stripTop = h - stripH;
-  const fade = ctx.createLinearGradient(0, stripTop - h * 0.07, 0, h);
+  const bandH = h * 0.22;
+  const bandTop = h - bandH;
+  const fade = ctx.createLinearGradient(0, bandTop - h * 0.07, 0, h);
   fade.addColorStop(0, 'rgba(0, 0, 0, 0)');
   fade.addColorStop(0.3, grade.band);
   fade.addColorStop(1, grade.band);
   ctx.fillStyle = fade;
-  ctx.fillRect(0, stripTop - h * 0.07, w, stripH + h * 0.07);
+  ctx.fillRect(0, bandTop - h * 0.07, w, bandH + h * 0.07);
 
   const align = state.align === 'center' ? 'center' : state.align === 'right' ? 'right' : 'left';
-  const anchorX = textAnchorX(state, w);
+  const anchorX = anchorXFor(state, w);
   const tracking = state.spacing == null ? 0 : state.spacing;
+  const sizeScale = state.headlineSize == null ? 1 : state.headlineSize;
 
-  const headline = (state.headline || '').trim().toUpperCase();
+  const headline = headlineText(state);
   if (headline) {
-    let size = h * 0.088;
+    let size = h * 0.088 * sizeScale;
     const limit = w * 0.88;
     ctx.font = `700 ${size}px ${POSTER_FONT}`;
     if ('letterSpacing' in ctx) ctx.letterSpacing = `${tracking}px`;
-    while (ctx.measureText(headline).width > limit && size > h * 0.022) {
+    while (ctx.measureText(headline).width > limit && size > h * 0.02) {
       size -= 2;
       ctx.font = `700 ${size}px ${POSTER_FONT}`;
     }
@@ -124,7 +136,7 @@ function paintBadge(ctx, grade) {
     else ctx.lineTo(x, y);
   }
   ctx.closePath();
-  ctx.fillStyle = 'rgba(255, 45, 146, 0.92)';
+  ctx.fillStyle = grade.accent === '#ffd166' ? 'rgba(255, 190, 60, 0.95)' : 'rgba(255, 45, 146, 0.92)';
   ctx.fill();
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
   ctx.lineWidth = Math.max(2, radius * 0.05);
@@ -154,7 +166,7 @@ function paintActiveFrame(ctx, state, layout) {
 }
 
 // Renders the cover at a real export size and downloads it. PNG is
-// lossless; JPEG (quality 0.92) is the smaller alternative new in v3.
+// lossless; JPEG (quality 0.92) is the smaller alternative.
 export function exportPoster(state, onSaved) {
   const size = state.exportSize;
   const off = document.createElement('canvas');

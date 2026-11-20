@@ -12,6 +12,10 @@
     <h1>Vice Cover</h1>
     <p class="lede">Turn your own photos into a multi-panel poster cover, bold caption and all. Everything runs on your machine — photos are never uploaded.</p>
 
+    <h2>Start with a look</h2>
+    <p class="hint">One click sets panels, grade, size and lettering. Tweak anything after.</p>
+    <div id="presetPicker" class="group" aria-label="One-click presets"></div>
+
     <h2>Photos</h2>
     <p class="hint">Add up to three photos. One photo can fill every panel.</p>
     <label class="upload-btn">Choose photos
@@ -24,7 +28,7 @@
     </div>
 
     <h2>Panels</h2>
-    <p class="hint">Pick how many panels the cover has, then select a panel and drag it on the preview to pan its photo. Zoom and rotate fine-tune the framing.</p>
+    <p class="hint">Pick how many panels the cover has — 2 for a cinematic split, 5 for a mosaic — then select a panel and drag it on the preview to pan its photo.</p>
     <label class="field">Panel count
       <span id="panelCountPicker" class="group" aria-label="Panel count"></span>
     </label>
@@ -40,12 +44,37 @@
       <select id="panelPhotoSelect"></select>
     </label>
 
+    <h2>Light in this panel</h2>
+    <p class="hint">Each panel gets its own brightness, contrast and colour strength.</p>
+    <label class="field">Brightness
+      <input id="brightRange" type="range" min="0.5" max="1.5" step="0.01" value="1">
+      <span id="brightOut">100%</span>
+    </label>
+    <label class="field">Contrast
+      <input id="contrastRange" type="range" min="0.5" max="1.5" step="0.01" value="1">
+      <span id="contrastOut">100%</span>
+    </label>
+    <label class="field">Colour strength
+      <input id="satRange" type="range" min="0" max="2" step="0.01" value="1">
+      <span id="satOut">100%</span>
+    </label>
+    <div class="row">
+      <button id="resetPanelBtn" type="button">Reset this panel</button>
+    </div>
+
     <h2>Lettering</h2>
     <label class="field">Headline
       <input id="headlineInput" type="text" maxlength="34" value="Vice Nights">
     </label>
     <label class="field">Tagline
       <input id="taglineInput" type="text" maxlength="48" value="Vice City · Est. Tonight">
+    </label>
+    <label class="field">Headline size
+      <input id="headlineSizeRange" type="range" min="0.6" max="1.4" step="0.05" value="1">
+      <span id="headlineSizeOut">100%</span>
+    </label>
+    <label class="check">
+      <input id="uppercaseToggle" type="checkbox" checked> Headline in ALL CAPS
     </label>
     <label class="field">Headline alignment
       <span id="alignPicker" class="group" aria-label="Headline alignment"></span>
@@ -67,6 +96,9 @@
     <label class="check">
       <input id="badgeToggle" type="checkbox"> “EST. 2026” star badge on the cover
     </label>
+    <label class="check">
+      <input id="grainToggle" type="checkbox"> Film grain on the cover
+    </label>
 
     <h2>Look &amp; export</h2>
     <p class="hint">Pick a colour grade and how the panels are divided.</p>
@@ -84,6 +116,7 @@
         <option value="square">1080 × 1080 — square post</option>
         <option value="portrait">1080 × 1350 — portrait post</option>
         <option value="wide" selected>1920 × 1080 — wide post</option>
+        <option value="story">1080 × 1920 — story</option>
       </select>
     </label>
     <label class="field">Export file type

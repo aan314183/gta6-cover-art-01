@@ -1,4 +1,6 @@
-/* Vice Cover v3 — control panel on the left, poster stage on the right. */
+/* Vice Cover v4 — control panel on the left, poster stage on the right.
+   Dark violet shell, pink accents, and a preset row that reads as three
+   big look-buttons at the top of the sidebar. */
 
 @font-face {
   font-family: "Vice Bold";
@@ -18,7 +20,7 @@ body {
 
 .page {
   display: grid;
-  grid-template-columns: 372px minmax(0, 1fr);
+  grid-template-columns: 392px minmax(0, 1fr);
   gap: 20px;
   min-height: 100vh;
   padding: 20px;
@@ -81,6 +83,20 @@ button {
 }
 button:hover { background: #4e2c6a; }
 button.active { background: #ff7ad9; border-color: #ff7ad9; color: #160a20; }
+
+/* Preset buttons are the first thing in the sidebar: bigger, warmer,
+   and tinted gold so they read as looks rather than settings. */
+#presetPicker button {
+  flex: 1;
+  padding: 11px 8px;
+  border-color: #a8842e;
+  background: linear-gradient(180deg, #4a2c10, #2c1540);
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+#presetPicker button:hover { background: linear-gradient(180deg, #6b4218, #3c2154); }
+#presetPicker button.active { background: #ffd166; border-color: #ffd166; color: #160a20; }
 
 .upload-btn {
   display: inline-block;
