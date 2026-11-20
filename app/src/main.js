@@ -1,15 +1,19 @@
-// Vice Cover entry point: builds the editor, then, when the page carries a
-// ?shot= query, stages a fixed scene for a screenshot instead.
+// Vice Cover v2 entry point.
+//
+// Boots the editor first, so the page is usable on its own, then stages
+// a fixed scene when the URL carries a ?shot= parameter — that is how the
+// screenshots in screenshots/ were produced. A failed scene still marks
+// the page ready, so a screenshot tool never waits forever.
 
-import { initEditor } from './editor.js';
-import { runScene } from './scenes.js';
+import { startEditor } from './editor.js';
+import { stageShot } from './scenes.js';
 
-const editor = initEditor();
-const query = new URLSearchParams(location.search);
+const editor = startEditor();
+const params = new URLSearchParams(window.location.search);
 
-if (query.get('shot')) {
-  runScene(query, editor).catch((err) => {
-    console.error('Scene failed:', err);
+if (params.get('shot')) {
+  stageShot(params, editor).catch((error) => {
+    console.error('Scene failed:', error);
     window.__shotReady = true;
   });
 }

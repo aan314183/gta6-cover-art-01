@@ -1,98 +1,125 @@
-// Renders a finished cover onto any canvas: panels, grade wash, then the
-// bold caption band along the bottom. Also exports that render as a PNG file.
+// Cover rendering and PNG export for Vice Cover v2.
+//
+// renderPoster paints a whole cover onto any canvas at that canvas's own
+// size: dark background, the four photo panels, the grade wash, then the
+// caption band with the headline and tagline. The headline can carry a
+// dark outline of adjustable thickness and an optional drop shadow whose
+// strength the user sets — both new in v2. exportPosterPNG renders the
+// same cover off-screen at a real export size and downloads it.
 
-import { panelLayout, drawPanelPhoto } from './panels.js';
-import { GRADES, paintWash } from './grade.js';
+import { layoutFor, paintPhoto } from './panels.js';
+import { gradeFor, paintWash } from './grade.js';
 
-const FONT = '"Vice Bold", sans-serif';
+const POSTER_FONT = '"Vice Bold", sans-serif';
 
-// Draws the whole cover for `state` onto `canvas` at the canvas's own size.
-export function renderCover(canvas, state) {
+export function renderPoster(canvas, state) {
   const ctx = canvas.getContext('2d');
-  const { width: w, height: h } = canvas;
-  const grade = GRADES[state.grade] || GRADES.sunset;
-  const layout = panelLayout(state.sizeKey);
+  const w = canvas.width;
+  const h = canvas.height;
+  const grade = gradeFor(state.grade);
+  const layout = layoutFor(state.sizeKey);
 
-  ctx.fillStyle = '#160a24';
+  ctx.fillStyle = '#14081f';
   ctx.fillRect(0, 0, w, h);
-  state.panels.forEach((panel, i) => {
+  for (let i = 0; i < state.panels.length; i += 1) {
+    const panel = state.panels[i];
     const photo = state.photos[panel.photoIndex] || null;
-    drawPanelPhoto(ctx, photo, layout[i], panel, grade.photoFilter);
-  });
+    paintPhoto(ctx, photo, layout[i], panel, grade.filter, state.divider);
+  }
   paintWash(ctx, grade);
-  drawCaptionBand(ctx, state, grade);
-  drawSelectedOutline(ctx, state, layout);
+  paintCaptionBand(ctx, state, grade);
+  if (!state.clean) paintActiveFrame(ctx, state, layout);
 }
 
-function drawCaptionBand(ctx, state, grade) {
-  const { width: w, height: h } = ctx.canvas;
-  const bandH = h * 0.2;
-  const bandY = h - bandH;
-  const fade = ctx.createLinearGradient(0, bandY - h * 0.06, 0, h);
-  fade.addColorStop(0, 'rgba(0,0,0,0)');
-  fade.addColorStop(0.35, grade.band);
+function paintCaptionBand(ctx, state, grade) {
+  const w = ctx.canvas.width;
+  const h = ctx.canvas.height;
+  const bandH = h * 0.22;
+  const top = h - bandH;
+  const fade = ctx.createLinearGradient(0, top - h * 0.07, 0, h);
+  fade.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  fade.addColorStop(0.3, grade.band);
   fade.addColorStop(1, grade.band);
   ctx.fillStyle = fade;
-  ctx.fillRect(0, bandY - h * 0.06, w, bandH + h * 0.06);
+  ctx.fillRect(0, top - h * 0.07, w, bandH + h * 0.07);
 
-  const caption = (state.caption || '').trim().toUpperCase();
-  if (caption) {
-    let size = h * 0.085;
-    ctx.font = `700 ${size}px ${FONT}`;
-    while (ctx.measureText(caption).width > w * 0.8 && size > h * 0.02) {
+  const headline = (state.headline || '').trim().toUpperCase();
+  if (headline) {
+    let size = h * 0.088;
+    ctx.font = `700 ${size}px ${POSTER_FONT}`;
+    const limit = w * 0.88;
+    while (ctx.measureText(headline).width > limit && size > h * 0.022) {
       size -= 2;
-      ctx.font = `700 ${size}px ${FONT}`;
+      ctx.font = `700 ${size}px ${POSTER_FONT}`;
     }
+    const x = w * 0.045;
+    const y = h - h * 0.082;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = 'rgba(0,0,0,0.65)';
-    ctx.shadowBlur = size * 0.18;
-    ctx.shadowOffsetY = size * 0.05;
-    ctx.fillText(caption, w * 0.045, h - h * 0.075);
+    ctx.lineJoin = 'round';
+    const outlinePx = (state.outline || 0) * (size / 48);
+    if (state.shadow) {
+      const strength = state.shadowAmount == null ? 0.6 : state.shadowAmount;
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+      ctx.shadowBlur = size * 0.22 * strength;
+      ctx.shadowOffsetX = size * 0.04 * strength;
+      ctx.shadowOffsetY = size * 0.06 * strength;
+    }
+    if (outlinePx > 0) {
+      ctx.strokeStyle = 'rgba(10, 2, 24, 0.95)';
+      ctx.lineWidth = outlinePx;
+      ctx.strokeText(headline, x, y);
+    }
+    ctx.fillStyle = grade.ink;
+    ctx.fillText(headline, x, y);
+    ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 0;
   }
 
-  const sub = (state.subcaption || '').trim().toUpperCase();
-  if (sub) {
-    const size = Math.max(h * 0.021, 14);
-    ctx.font = `700 ${size}px ${FONT}`;
+  const tagline = (state.tagline || '').trim().toUpperCase();
+  if (tagline) {
+    const size = Math.max(h * 0.02, 13);
+    ctx.font = `700 ${size}px ${POSTER_FONT}`;
     ctx.fillStyle = grade.accent;
     ctx.textAlign = 'left';
-    ctx.fillText(sub, w * 0.045, h - h * 0.028);
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(tagline, w * 0.045, h - h * 0.03);
   }
 }
 
-// A dashed outline around the panel being edited, only in the live preview.
-function drawSelectedOutline(ctx, state, layout) {
-  if (state.selected == null || state.hideSelection) return;
-  const { width: w, height: h } = ctx.canvas;
-  const [fx, fy, fw, fh] = layout[state.selected];
+// Dashed frame around the panel being edited; skipped for clean exports.
+function paintActiveFrame(ctx, state, layout) {
+  if (state.active == null) return;
+  const w = ctx.canvas.width;
+  const h = ctx.canvas.height;
+  const rect = layout[state.active];
+  if (!rect) return;
   ctx.save();
   ctx.strokeStyle = '#ff7ad9';
   ctx.lineWidth = Math.max(3, w * 0.004);
-  ctx.setLineDash([w * 0.012, w * 0.008]);
-  ctx.strokeRect(fx * w, fy * h, fw * w, fh * h);
+  ctx.setLineDash([w * 0.014, w * 0.009]);
+  ctx.strokeRect(rect[0] * w, rect[1] * h, rect[2] * w, rect[3] * h);
   ctx.restore();
 }
 
-// Renders `state` at a real export size and downloads it as a PNG.
-export function exportCoverPNG(state, onDone) {
+// Renders the cover at a real export size and downloads it as a PNG file.
+export function exportPosterPNG(state, onSaved) {
   const size = state.exportSize;
   const off = document.createElement('canvas');
   off.width = size.width;
   off.height = size.height;
-  const clean = { ...state, selected: null, hideSelection: true };
-  renderCover(off, clean);
+  const clean = { ...state, active: null, clean: true };
+  renderPoster(off, clean);
   off.toBlob((blob) => {
     if (!blob) return;
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `vice-cover-${size.width}x${size.height}.png`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-    if (onDone) onDone(a.download);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `vice-cover-${size.width}x${size.height}.png`;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 5000);
+    if (onSaved) onSaved(link.download);
   }, 'image/png');
 }
