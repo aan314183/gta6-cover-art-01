@@ -4,16 +4,26 @@
 [![rank](https://make.fun/badge/gta6-cover-art-01/aan314183/gta6-cover-art-01/rank.svg)](https://make.fun/bounty/gta6-cover-art-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-cover-art-01)
 [![reward](https://make.fun/badge/gta6-cover-art-01/aan314183/gta6-cover-art-01/reward.svg)](https://make.fun/bounty/gta6-cover-art-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-cover-art-01)
 
-Vice Cover is a poster maker in the spirit of GTA 6 cover art: drop in your own photos, arrange them across four panels — one big hero and three supporting shots — write a bold headline, pick a colour grade, and export a share-ready PNG. It runs entirely in your browser, offline, with no build step and no account.
+Vice Cover is a poster maker in the spirit of GTA 6 cover art: drop in your own photos, arrange them across three or four panels — one big hero and the supporting shots — write a bold headline, pick a colour grade, and export a share-ready image. It runs entirely in your browser, offline, with no build step and no account.
 
 ## What it does
 
-- **Four panels, three layouts.** The hero-plus-supporters grid is rearranged for each export size, so the same photos work as a square, a portrait, or a wide banner.
+- **Three or four panels, three layouts each.** The hero-plus-supporters grid is rearranged for every export size, so the same photos work as a square, a portrait, or a wide banner. Switch between 3 and 4 panels whenever you like.
 - **Your photos stay yours.** Photos are read locally with FileReader and never uploaded. Up to three photos; one photo can fill every panel, or each panel can show a different one.
 - **Frame every shot.** Click a panel to select it, drag it on the preview to pan, then zoom and rotate until the framing is right.
-- **Poster lettering.** A headline and a tagline in bold DejaVu Sans Bold, with an adjustable headline outline, an optional drop shadow with adjustable strength, and a choice of lines between panels (none, hairline, bold, or dashed).
-- **Four colour grades.** Sunset, Neon, Mono, and the new Dusk — a violet-blue twilight.
-- **Real export sizes.** 1080 × 1080, 1080 × 1350, and 1920 × 1080 PNG.
+- **Poster lettering.** A headline and a tagline in bold DejaVu Sans Bold, with left/centre/right alignment, adjustable letter-spacing, an adjustable headline outline, and an optional drop shadow with adjustable strength.
+- **Five colour grades.** Sunset, Neon, Mono, Dusk, and the new Candy — a loud pink-and-cyan pop.
+- **A star badge.** An optional “EST. 2026” star in the top corner of the cover.
+- **Panel dividers.** Lines between panels: none, hairline, bold, or dashed.
+- **Real export sizes, two file types.** 1080 × 1080, 1080 × 1350, and 1920 × 1080, as PNG or JPEG.
+
+## What's new in v3
+
+- Toggle between **3-panel and 4-panel** covers.
+- **Headline alignment** (left / centre / right) plus a **letter-spacing** slider.
+- New **Candy** grade (pink/cyan pop).
+- Optional **“EST. 2026” star badge** overlay.
+- **JPEG export** alongside PNG.
 
 ## How to use it
 
@@ -23,9 +33,9 @@ Vice Cover is a poster maker in the spirit of GTA 6 cover art: drop in your own 
    ```
    then open http://localhost:8080.
 2. Add photos from your machine, or click **Load sample photos** to try the two bundled samples.
-3. Select a panel, drag it to pan, and set zoom and rotation.
-4. Write your headline and tagline, tune the outline, shadow, and panel lines, and pick a grade.
-5. Choose an export size and hit **Export PNG**.
+3. Pick 3 or 4 panels, select a panel, drag it to pan, and set zoom and rotation.
+4. Write your headline and tagline, tune the alignment, letter-spacing, outline, shadow, and panel lines, pick a grade, and switch the star badge on if you want it.
+5. Choose an export size and file type, then hit **Export PNG** / **Export JPEG**.
 
 ## Originality
 

@@ -1,9 +1,9 @@
-// Vice Cover v2 entry point.
+// Vice Cover v3 entry point.
 //
-// Boots the editor first, so the page is usable on its own, then stages
-// a fixed scene when the URL carries a ?shot= parameter — that is how the
-// screenshots in screenshots/ were produced. A failed scene still marks
-// the page ready, so a screenshot tool never waits forever.
+// The editor boots first, so the page is usable on its own, and then a
+// fixed scene is staged when the URL carries a ?shot= parameter — that is
+// how the screenshots in screenshots/ were produced. A scene that fails
+// still marks the page ready, so a screenshot tool never waits forever.
 
 import { startEditor } from './editor.js';
 import { stageShot } from './scenes.js';

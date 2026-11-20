@@ -1,24 +1,29 @@
-// Vice Cover v2 editor.
+// Vice Cover v3 editor.
 //
-// Owns the cover state, wires every control in the sidebar, and lets the
-// user drag a panel on the preview to pan the photo inside it. Photos are
-// read with FileReader on this machine and never uploaded anywhere; the
-// two bundled samples are local files under samples/.
+// This module owns the whole cover state and every sidebar control, and
+// it lets the user drag a panel on the preview to pan the photo inside
+// it. Photos are read with FileReader on this machine and never uploaded
+// anywhere; the two bundled samples are local files under samples/.
 //
 // State shape:
 //   photos / photoNames — loaded Image objects and their display names
-//   panels — one per panel: { photoIndex, zoom, dx, dy, rotate }
-//   active — index of the panel being edited
+//   panels — one slot per panel: { photoIndex, zoom, dx, dy, rotate }
+//   active — which panel is being edited
+//   panelCount — 3 or 4 panels on the cover (new in v3)
 //   headline, tagline — the two lines of poster lettering
+//   align — headline/tagline alignment: left, center or right (new in v3)
+//   spacing — extra letter-spacing on the headline, in px (new in v3)
+//   badge — whether the EST. 2026 star shows (new in v3)
+//   format — export file type: png or jpeg (new in v3)
 //   grade — key into GRADES; sizeKey — key into EXPORT_SIZES
 //   outline — headline outline thickness (0 = none)
 //   shadow, shadowAmount — headline drop shadow switch and strength
 //   divider — frame style around every panel
 //   clean — true only for an export render (no editor frame)
 
-import { EXPORT_SIZES, PANEL_LABELS, DIVIDER_KEYS, layoutFor, panelAtPoint } from './panels.js';
+import { EXPORT_SIZES, PANEL_LABELS, DIVIDER_KEYS, layoutFor, panelAtPoint, visiblePanels } from './panels.js';
 import { GRADES, GRADE_KEYS } from './grade.js';
-import { renderPoster, exportPosterPNG } from './export.js';
+import { renderPoster, exportPoster } from './export.js';
 
 const MAX_PHOTOS = 3;
 
@@ -28,8 +33,13 @@ export function createState() {
     photoNames: [],
     panels: PANEL_LABELS.map(() => ({ photoIndex: 0, zoom: 1, dx: 0, dy: 0, rotate: 0 })),
     active: 0,
+    panelCount: 4,
     headline: 'Vice Nights',
     tagline: 'Vice City · Est. Tonight',
+    align: 'left',
+    spacing: 0,
+    badge: false,
+    format: 'png',
     grade: 'dusk',
     sizeKey: 'wide',
     exportSize: EXPORT_SIZES.wide,
@@ -83,6 +93,24 @@ export function startEditor() {
     if (note) note.textContent = text;
   }
 
+  // Rebuilds the panel picker so it only lists panels that are visible.
+  function rebuildPanelPicker() {
+    const box = byId('panelPicker');
+    box.innerHTML = '';
+    PANEL_LABELS.slice(0, visiblePanels(state)).forEach((label, i) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      button.classList.toggle('active', i === state.active);
+      button.addEventListener('click', () => {
+        state.active = i;
+        syncPanelControls();
+        repaint();
+      });
+      box.appendChild(button);
+    });
+  }
+
   function syncPanelControls() {
     const panel = state.panels[state.active];
     byId('zoomRange').value = String(panel.zoom);
@@ -127,8 +155,8 @@ export function startEditor() {
     });
   }
 
-  function assignPhotos() {
-    // The first photo fills every panel until the user picks otherwise.
+  // The first photo fills every visible panel until the user picks otherwise.
+  function assignFirstPhoto() {
     if (state.photos.length === 1) {
       state.panels.forEach((panel) => { panel.photoIndex = 0; });
     }
@@ -149,7 +177,7 @@ export function startEditor() {
         say(`Could not read ${file.name}.`);
       }
     }
-    assignPhotos();
+    assignFirstPhoto();
     syncChips();
     syncPanelControls();
     repaint();
@@ -178,7 +206,8 @@ export function startEditor() {
     }
   }
 
-  function buildPickerButtons(containerId, labels, onPick, initial) {
+  // One row of toggle buttons: grade picker, alignment picker, panel count.
+  function buildToggleRow(containerId, labels, onPick, initial) {
     const container = byId(containerId);
     labels.forEach((label, i) => {
       const button = document.createElement('button');
@@ -192,22 +221,30 @@ export function startEditor() {
       });
       container.appendChild(button);
     });
-    const first = container.querySelector('button');
-    if (first && initial != null) {
+    if (initial != null) {
       container.querySelectorAll('button')[initial].classList.add('active');
     }
   }
 
-  buildPickerButtons('panelPicker', PANEL_LABELS, (i) => {
-    state.active = i;
-    syncPanelControls();
-    repaint();
-  }, 0);
-
-  buildPickerButtons('gradePicker', GRADE_KEYS.map((k) => GRADES[k].label), (i) => {
+  buildToggleRow('gradePicker', GRADE_KEYS.map((k) => GRADES[k].label), (i) => {
     state.grade = GRADE_KEYS[i];
     repaint();
   }, GRADE_KEYS.indexOf(state.grade));
+
+  buildToggleRow('alignPicker', ['Left', 'Centre', 'Right'], (i) => {
+    state.align = ['left', 'center', 'right'][i];
+    repaint();
+  }, 0);
+
+  buildToggleRow('panelCountPicker', ['3 panels', '4 panels'], (i) => {
+    state.panelCount = i === 0 ? 3 : 4;
+    if (state.active >= state.panelCount) state.active = 0;
+    rebuildPanelPicker();
+    syncPanelControls();
+    repaint();
+  }, 1);
+
+  rebuildPanelPicker();
 
   byId('photoInput').addEventListener('change', (event) => addFiles([...event.target.files]));
   byId('samplesBtn').addEventListener('click', loadSamples);
@@ -240,6 +277,11 @@ export function startEditor() {
     state.tagline = event.target.value;
     repaint();
   });
+  byId('spacingRange').addEventListener('input', (event) => {
+    state.spacing = Number(event.target.value);
+    byId('spacingOut').textContent = `${event.target.value} px`;
+    repaint();
+  });
   byId('outlineRange').addEventListener('input', (event) => {
     state.outline = Number(event.target.value);
     byId('outlineOut').textContent = `${event.target.value} px`;
@@ -253,6 +295,10 @@ export function startEditor() {
     state.shadowAmount = Number(event.target.value);
     repaint();
   });
+  byId('badgeToggle').addEventListener('change', (event) => {
+    state.badge = event.target.checked;
+    repaint();
+  });
   byId('dividerSelect').addEventListener('change', (event) => {
     state.divider = event.target.value;
     repaint();
@@ -262,8 +308,12 @@ export function startEditor() {
     state.exportSize = EXPORT_SIZES[state.sizeKey];
     repaint();
   });
+  byId('formatSelect').addEventListener('change', (event) => {
+    state.format = event.target.value;
+    byId('exportBtn').textContent = state.format === 'jpeg' ? 'Export JPEG' : 'Export PNG';
+  });
   byId('exportBtn').addEventListener('click', () => {
-    exportPosterPNG(state, (name) => say(`Saved ${name} — share it anywhere.`));
+    exportPoster(state, (name) => say(`Saved ${name} — share it anywhere.`));
   });
 
   // Pointer drag: press a panel to select it, then drag to pan its photo.
@@ -277,7 +327,8 @@ export function startEditor() {
   }
   canvas.addEventListener('pointerdown', (event) => {
     const point = toCanvasPixels(event);
-    const hit = panelAtPoint(layoutFor(state.sizeKey), point.x, point.y, canvas.width, canvas.height);
+    const layout = layoutFor(state.sizeKey, state.panelCount);
+    const hit = panelAtPoint(layout, point.x, point.y, canvas.width, canvas.height);
     if (hit === -1) return;
     state.active = hit;
     syncPanelControls();
@@ -288,7 +339,7 @@ export function startEditor() {
       startY: point.y,
       dx: panel.dx,
       dy: panel.dy,
-      rect: layoutFor(state.sizeKey)[hit],
+      rect: layout[hit],
     };
     canvas.setPointerCapture(event.pointerId);
     repaint();

@@ -1,16 +1,16 @@
-// Panel geometry and painting for Vice Cover v2.
+// Vice Cover v3 — panel geometry and photo painting.
 //
-// A cover holds four photo panels — one large hero and three supporters —
-// arranged differently for each export size, so the same photos read well
-// as a square post, a tall portrait, or a wide banner. Rectangles are
-// fractions of the cover: [left, top, width, height], all in 0..1.
+// A cover is a collage of either three or four photo panels. The first
+// panel is always the hero; the rest support it. Every export size gets
+// its own arrangement, and the three-panel arrangement is its own layout
+// rather than the four-panel one with a hole in it. A panel rectangle is
+// stored as fractions of the cover: [left, top, width, height].
 //
-// The thin dark gutters between panels come from the cover background
-// showing through. On top of that, the user picks a divider style, which
-// draws a frame around every panel: none, a hairline, a bold line, or a
-// dashed line. Dividers are drawn by paintPhoto below, from the state.
+// The dark gutters are just the cover background showing between panels.
+// On top of that the user picks a frame style for each panel: none, a
+// hairline, a bold line, or a dashed line.
 
-export const PANEL_LABELS = ['Hero', 'Upper side', 'Lower side', 'Wide strip'];
+export const PANEL_LABELS = ['Hero', 'Top support', 'Bottom support', 'Wide strip'];
 
 export const EXPORT_SIZES = {
   square: { width: 1080, height: 1080, label: '1080 × 1080' },
@@ -27,81 +27,105 @@ export const DIVIDER_STYLES = {
 
 export const DIVIDER_KEYS = Object.keys(DIVIDER_STYLES);
 
-const GUTTER = 0.014;
+const GAP = 0.014;
 
-// Rectangles per size, each as [x, y, w, h] fractions.
-export function layoutFor(sizeKey) {
-  const g = GUTTER;
+function box(x, y, w, h) {
+  return [x, y, w, h];
+}
+
+// Four panels: hero plus three supporters, arranged per size.
+function fourPanelLayout(sizeKey) {
+  const g = GAP;
   if (sizeKey === 'portrait') {
-    const heroH = 0.54;
-    const midH = 0.21;
-    const stripY = heroH + midH + g * 2;
     return [
-      [0, 0, 1, heroH],
-      [0, heroH + g, 0.493, midH],
-      [0.507, heroH + g, 0.493, midH],
-      [0, stripY, 1, 1 - stripY],
+      box(0, 0, 1, 0.54),
+      box(0, 0.554, 0.493, 0.21),
+      box(0.507, 0.554, 0.493, 0.21),
+      box(0, 0.778, 1, 0.222),
     ];
   }
   if (sizeKey === 'wide') {
-    const heroW = 0.55;
-    const topH = 0.48;
-    const sideW = 0.225;
     return [
-      [0, 0, heroW, 1],
-      [heroW + g, 0, 1 - heroW - g, topH],
-      [heroW + g, topH + g, sideW, 1 - topH - g],
-      [heroW + sideW + g * 2, topH + g, 1 - heroW - sideW - g * 2, 1 - topH - g],
+      box(0, 0, 0.55, 1),
+      box(0.564, 0, 0.436, 0.48),
+      box(0.564, 0.494, 0.225, 0.506),
+      box(0.803, 0.494, 0.197, 0.506),
     ];
   }
-  // square: hero top-left, two stacked on the right, strip along the bottom.
-  const hero = 0.6;
-  const rightH = 0.293;
   return [
-    [0, 0, hero, hero],
-    [hero + g, 0, 1 - hero - g, rightH],
-    [hero + g, rightH + g, 1 - hero - g, rightH],
-    [0, hero + g, 1, 1 - hero - g],
+    box(0, 0, 0.6, 0.6),
+    box(0.614, 0, 0.386, 0.293),
+    box(0.614, 0.307, 0.386, 0.293),
+    box(0, 0.614, 1, 0.386),
   ];
 }
 
-// Paints one photo into its rectangle, cover-fitting it, then shifting it
-// by the panel's pan (dx, dy as fractions of the panel), zoom and rotation.
+// Three panels: hero plus two supporters, arranged per size.
+function threePanelLayout(sizeKey) {
+  const g = GAP;
+  if (sizeKey === 'portrait') {
+    return [
+      box(0, 0, 1, 0.6),
+      box(0, 0.614, 0.493, 0.386),
+      box(0.507, 0.614, 0.493, 0.386),
+    ];
+  }
+  if (sizeKey === 'wide') {
+    return [
+      box(0, 0, 0.55, 1),
+      box(0.564, 0, 0.436, 0.493),
+      box(0.564, 0.507, 0.436, 0.493),
+    ];
+  }
+  return [
+    box(0, 0, 1, 0.62),
+    box(0, 0.634, 0.493, 0.366),
+    box(0.507, 0.634, 0.493, 0.366),
+  ];
+}
+
+export function layoutFor(sizeKey, panelCount) {
+  return panelCount === 3 ? threePanelLayout(sizeKey) : fourPanelLayout(sizeKey);
+}
+
+// How many panels the cover actually shows right now.
+export function visiblePanels(state) {
+  return state.panelCount === 3 ? 3 : 4;
+}
+
+// Cover-fits one photo inside its rectangle, then applies the panel's
+// pan (dx, dy as fractions of the panel), zoom and rotation.
 export function paintPhoto(ctx, photo, rect, panel, filter, divider) {
-  const fx = rect[0];
-  const fy = rect[1];
-  const fw = rect[2];
-  const fh = rect[3];
-  const canvasW = ctx.canvas.width;
-  const canvasH = ctx.canvas.height;
-  const x = fx * canvasW;
-  const y = fy * canvasH;
-  const pw = fw * canvasW;
-  const ph = fh * canvasH;
+  const surfaceW = ctx.canvas.width;
+  const surfaceH = ctx.canvas.height;
+  const px = rect[0] * surfaceW;
+  const py = rect[1] * surfaceH;
+  const pw = rect[2] * surfaceW;
+  const ph = rect[3] * surfaceH;
   ctx.save();
   ctx.beginPath();
-  ctx.rect(x, y, pw, ph);
+  ctx.rect(px, py, pw, ph);
   ctx.clip();
   ctx.fillStyle = '#1c1030';
-  ctx.fillRect(x, y, pw, ph);
+  ctx.fillRect(px, py, pw, ph);
   if (photo && photo.naturalWidth > 0) {
-    const cover = Math.max(pw / photo.naturalWidth, ph / photo.naturalHeight);
-    const scale = cover * (panel.zoom || 1);
-    const iw = photo.naturalWidth * scale;
-    const ih = photo.naturalHeight * scale;
-    const cx = x + pw / 2 + (panel.dx || 0) * pw;
-    const cy = y + ph / 2 + (panel.dy || 0) * ph;
-    ctx.translate(cx, cy);
+    const fit = Math.max(pw / photo.naturalWidth, ph / photo.naturalHeight);
+    const scale = fit * (panel.zoom || 1);
+    const drawW = photo.naturalWidth * scale;
+    const drawH = photo.naturalHeight * scale;
+    const centreX = px + pw / 2 + (panel.dx || 0) * pw;
+    const centreY = py + ph / 2 + (panel.dy || 0) * ph;
+    ctx.translate(centreX, centreY);
     ctx.rotate(((panel.rotate || 0) * Math.PI) / 180);
     if (filter) ctx.filter = filter;
-    ctx.drawImage(photo, -iw / 2, -ih / 2, iw, ih);
+    ctx.drawImage(photo, -drawW / 2, -drawH / 2, drawW, drawH);
     ctx.filter = 'none';
   }
   ctx.restore();
-  drawDivider(ctx, x, y, pw, ph, divider);
+  drawDivider(ctx, px, py, pw, ph, divider);
 }
 
-// The frame around a panel, following the user's divider choice.
+// The frame around one panel, following the user's divider choice.
 export function drawDivider(ctx, x, y, pw, ph, divider) {
   if (!divider || divider === 'none') return;
   const w = ctx.canvas.width;
@@ -119,8 +143,8 @@ export function drawDivider(ctx, x, y, pw, ph, divider) {
   ctx.restore();
 }
 
-// Which panel a point in canvas pixels lands in, or -1 when it lands on a
-// gutter. Later panels win, so a shared edge belongs to the panel on top.
+// Which panel a point in canvas pixels falls inside, or -1 on a gutter.
+// Checked back to front so a shared edge belongs to the panel on top.
 export function panelAtPoint(layout, px, py, width, height) {
   for (let i = layout.length - 1; i >= 0; i -= 1) {
     const rect = layout[i];

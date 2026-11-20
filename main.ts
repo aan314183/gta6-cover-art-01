@@ -1,24 +1,26 @@
 /**
- * Vice Cover v2 — make.fun entry builder for the gta6-cover-art-01 bounty.
+ * Vice Cover v3 — make.fun entry builder for gta6-cover-art-01.
  *
- * What this program does, in order:
- *   1. Works out where it is running from (this repository) and where the
- *      entry must land (MAKEFUN_OUTPUT_DIR, or /output when that is unset,
- *      which is what the grader uses).
- *   2. Empties that destination first, so a stale file from an earlier run
- *      can never leak into the entry, then recreates it empty.
- *   3. Copies the offline app (app/) and the screenshots (screenshots/)
- *      into it, and refuses to continue when either source is missing.
- *   4. Asks the vendored make.fun library (vendor/makefun-app.ts, never
- *      edited here) to build the dossier for the finished directory and
- *      writes it as dossier.json.
- *   5. Prints a short summary: how many app files were copied and how
- *      big the dossier came out.
+ * Running this file assembles the submission bundle:
  *
- * The output is deterministic: the grader runs this file twice into two
- * fresh directories and expects byte-identical results, which is why the
- * destination is cleared before copying and nothing here stamps a time,
- * a random value, or a machine-specific path into the output.
+ *   1. It resolves the repository root from this file's own location and
+ *      picks the bundle directory from MAKEFUN_OUTPUT_DIR (the grader
+ *      sets it; when it is absent the bundle lands in /output).
+ *   2. It wipes that directory and recreates it, so a leftover file from
+ *      an earlier run can never sneak into the entry.
+ *   3. It copies the offline app (app/) and the screenshots
+ *      (screenshots/) into the bundle, and stops immediately if either
+ *      source folder is missing or is not a directory.
+ *   4. It asks the vendored make.fun library (vendor/makefun-app.ts,
+ *      which this file never edits) to build the dossier for the bundle
+ *      and writes it as dossier.json.
+ *   5. It prints how many files the app holds and how large the dossier
+ *      came out.
+ *
+ * The bundle is deterministic: nothing here stamps a clock reading, a
+ * random value, or a machine-specific path into the output, so running
+ * this file twice into two fresh directories gives byte-identical
+ * results — that is what the grader checks.
  *
  * Node 22 or newer, standard library only, no build step, no install:
  *
@@ -33,10 +35,10 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-app.ts';
 
-// The gate's caps, exactly as the bounty states them: at most four
-// screenshots of 256 KiB each, app/ at most 993 files and 48 MiB in all,
-// no app/ path over 1000 bytes, and dossier text capped at 160 KiB.
-const DOSSIER_CAPS = {
+// The bounty gate's limits, exactly as stated: at most four screenshots
+// of 256 KiB each, app/ at most 993 files and 48 MiB in total, no app/
+// path over 1000 bytes, and dossier text capped at 160 KiB.
+const GATE_LIMITS = {
   text_max_bytes: 163840,
   screenshots: { max: 4, max_bytes: 262144 },
   app_max_files: 993,
@@ -44,48 +46,49 @@ const DOSSIER_CAPS = {
   app_path_max_bytes: 1000,
 };
 
-function fail(message) {
-  throw new Error(`vice-cover build: ${message}`);
+const ROOT = dirname(fileURLToPath(import.meta.url));
+
+function abort(reason) {
+  throw new Error(`vice-cover v3 build: ${reason}`);
 }
 
-function countFiles(root) {
-  let total = 0;
-  for (const entry of readdirSync(root, { withFileTypes: true })) {
-    const path = join(root, entry.name);
-    if (entry.isDirectory()) total += countFiles(path);
-    else if (entry.isFile()) total += 1;
+function tallyFiles(folder) {
+  let found = 0;
+  for (const item of readdirSync(folder, { withFileTypes: true })) {
+    const next = join(folder, item.name);
+    if (item.isDirectory()) found += tallyFiles(next);
+    else if (item.isFile()) found += 1;
   }
-  return total;
+  return found;
 }
 
-function prepareDestination(destination) {
-  if (existsSync(destination)) rmSync(destination, { recursive: true, force: true });
-  mkdirSync(destination, { recursive: true });
+function wipeAndMake(folder) {
+  if (existsSync(folder)) rmSync(folder, { recursive: true, force: true });
+  mkdirSync(folder, { recursive: true });
 }
 
-function copyTree(from, to, label) {
-  if (!existsSync(from)) fail(`missing ${label} directory: ${from}`);
-  if (!statSync(from).isDirectory()) fail(`${label} is not a directory: ${from}`);
-  cpSync(from, to, { recursive: true });
+function copyInto(source, target, what) {
+  if (!existsSync(source)) abort(`cannot find the ${what} folder: ${source}`);
+  if (!statSync(source).isDirectory()) abort(`${what} is not a folder: ${source}`);
+  cpSync(source, target, { recursive: true });
 }
 
-function main() {
-  const here = dirname(fileURLToPath(import.meta.url));
-  const destination = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+function buildBundle() {
+  const bundle = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
-  prepareDestination(destination);
-  copyTree(join(here, 'app'), join(destination, 'app'), 'app');
-  copyTree(join(here, 'screenshots'), join(destination, 'screenshots'), 'screenshots');
+  wipeAndMake(bundle);
+  copyInto(join(ROOT, 'app'), join(bundle, 'app'), 'app');
+  copyInto(join(ROOT, 'screenshots'), join(bundle, 'screenshots'), 'screenshots');
 
-  const dossier = buildDossier(destination, DOSSIER_CAPS);
-  const dossierPath = join(destination, 'dossier.json');
-  writeFileSync(dossierPath, dossier);
+  const dossierText = buildDossier(bundle, GATE_LIMITS);
+  const dossierFile = join(bundle, 'dossier.json');
+  writeFileSync(dossierFile, dossierText);
 
-  const appFiles = countFiles(join(destination, 'app'));
-  const dossierBytes = statSync(dossierPath).size;
-  console.log(`vice-cover: wrote ${destination}`);
-  console.log(`vice-cover: app files copied: ${appFiles}`);
-  console.log(`vice-cover: dossier.json: ${dossierBytes} bytes`);
+  const appFileCount = tallyFiles(join(bundle, 'app'));
+  const dossierSize = statSync(dossierFile).size;
+  console.log(`vice-cover v3: bundle written to ${bundle}`);
+  console.log(`vice-cover v3: app files in bundle: ${appFileCount}`);
+  console.log(`vice-cover v3: dossier.json: ${dossierSize} bytes`);
 }
 
-main();
+buildBundle();

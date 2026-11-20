@@ -1,18 +1,32 @@
-// Fixed scenes for screenshots, driven by the page's query string.
+// Vice Cover v3 — fixed scenes for screenshots.
 //
+// The page reads its query string and stages one scene:
 //   ?shot=editor — the editor with the sample photos loaded.
 //   ?shot=cover  — the finished cover alone, controls hidden.
 //
-// Other parameters: `photo` picks which sample leads (pier or boulevard),
-// `caption` and `tagline` set the lettering, `grade` picks the colour
-// grade (sunset, neon, mono, dusk), `size` picks square, portrait or
-// wide, `outline` sets the headline outline in px, `shadow` is 0 or 1,
-// `shadowAmt` sets shadow strength, and `divider` picks the panel frame
-// style. window.__shotReady is set once the cover has been painted and
-// the font is ready, so a screenshot tool knows when to shoot.
+// The rest of the parameters shape the staged cover: `photo` picks which
+// sample leads (pier or boulevard), `caption` and `tagline` set the
+// lettering, `grade` picks the colour grade (sunset, neon, mono, dusk,
+// candy), `size` picks square, portrait or wide, `outline` sets the
+// headline outline in px, `shadow` is 0 or 1, `shadowAmt` sets shadow
+// strength, `divider` picks the panel frame style, `panels` picks 3 or 4
+// panels, `align` picks left, center or right headline alignment,
+// `spacing` sets headline letter-spacing in px, and `badge` is 1 to show
+// the EST. 2026 star. window.__shotReady is set once the cover has been
+// painted and the font is ready, so a screenshot tool knows when to shoot.
 
 import { readUrlAsImage } from './editor.js';
 import { EXPORT_SIZES } from './panels.js';
+
+function setControl(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.value = value;
+}
+
+function setToggle(id, checked) {
+  const el = document.getElementById(id);
+  if (el) el.checked = checked;
+}
 
 export async function stageShot(query, editor) {
   const { state, repaint } = editor;
@@ -32,28 +46,54 @@ export async function stageShot(query, editor) {
   if (size && EXPORT_SIZES[size]) {
     state.sizeKey = size;
     state.exportSize = EXPORT_SIZES[size];
-    const sizeSelect = document.getElementById('sizeSelect');
-    if (sizeSelect) sizeSelect.value = size;
+    setControl('sizeSelect', size);
   }
   const outline = query.get('outline');
   if (outline != null) {
     state.outline = Number(outline);
-    const outlineRange = document.getElementById('outlineRange');
-    if (outlineRange) outlineRange.value = outline;
+    setControl('outlineRange', outline);
   }
   const shadow = query.get('shadow');
   if (shadow != null) {
     state.shadow = shadow !== '0';
-    const shadowToggle = document.getElementById('shadowToggle');
-    if (shadowToggle) shadowToggle.checked = state.shadow;
+    setToggle('shadowToggle', state.shadow);
   }
   const shadowAmt = query.get('shadowAmt');
   if (shadowAmt != null) state.shadowAmount = Number(shadowAmt);
   const divider = query.get('divider');
   if (divider) {
     state.divider = divider;
-    const dividerSelect = document.getElementById('dividerSelect');
-    if (dividerSelect) dividerSelect.value = divider;
+    setControl('dividerSelect', divider);
+  }
+  const panels = query.get('panels');
+  if (panels === '3' || panels === '4') {
+    state.panelCount = Number(panels);
+    document.querySelectorAll('#panelCountPicker button').forEach((button, i) => {
+      button.classList.toggle('active', (i === 0 && panels === '3') || (i === 1 && panels === '4'));
+    });
+    document.querySelectorAll('#panelPicker button').forEach((button, i) => {
+      button.style.display = i < state.panelCount ? '' : 'none';
+    });
+  }
+  const align = query.get('align');
+  if (align === 'left' || align === 'center' || align === 'right') {
+    state.align = align;
+    const idx = ['left', 'center', 'right'].indexOf(align);
+    document.querySelectorAll('#alignPicker button').forEach((button, i) => {
+      button.classList.toggle('active', i === idx);
+    });
+  }
+  const spacing = query.get('spacing');
+  if (spacing != null) {
+    state.spacing = Number(spacing);
+    setControl('spacingRange', spacing);
+    const out = document.getElementById('spacingOut');
+    if (out) out.textContent = `${spacing} px`;
+  }
+  const badge = query.get('badge');
+  if (badge != null) {
+    state.badge = badge === '1';
+    setToggle('badgeToggle', state.badge);
   }
 
   // Both samples load, so every panel has a photo to show.
@@ -68,7 +108,7 @@ export async function stageShot(query, editor) {
   state.panels[2].photoIndex = 1;
   state.panels[3].photoIndex = 0;
   // Frame each supporting panel on a different part of its photo, so the
-  // four panels do not all show the same crop.
+  // panels do not all show the same crop.
   state.panels[1].zoom = 1.08;
   state.panels[1].dy = -0.12;
   state.panels[2].zoom = 1.08;
@@ -79,10 +119,8 @@ export async function stageShot(query, editor) {
   state.panels[3].dy = state.sizeKey === 'wide' ? 0.08 : 0.26;
 
   // Bring the sidebar in step with the staged state.
-  const headlineInput = document.getElementById('headlineInput');
-  if (headlineInput) headlineInput.value = state.headline;
-  const taglineInput = document.getElementById('taglineInput');
-  if (taglineInput) taglineInput.value = state.tagline;
+  setControl('headlineInput', state.headline);
+  setControl('taglineInput', state.tagline);
   document.querySelectorAll('#gradePicker button').forEach((button) => {
     button.classList.toggle('active', button.textContent.toLowerCase() === state.grade);
   });

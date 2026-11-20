@@ -1,4 +1,4 @@
-/* Vice Cover v2 — sidebar on the left, poster stage on the right. */
+/* Vice Cover v3 — control panel on the left, poster stage on the right. */
 
 @font-face {
   font-family: "Vice Bold";
@@ -11,45 +11,45 @@
 
 body {
   margin: 0;
-  background: #14081f;
+  background: #160a20;
   color: #f6eefc;
   font-family: "Vice Bold", system-ui, sans-serif;
 }
 
-.layout {
+.page {
   display: grid;
-  grid-template-columns: 360px minmax(0, 1fr);
+  grid-template-columns: 372px minmax(0, 1fr);
   gap: 20px;
   min-height: 100vh;
   padding: 20px;
 }
 
-.sidebar {
-  background: #251238;
+.panel {
+  background: #271239;
   border-radius: 16px;
   padding: 20px 22px;
   overflow-y: auto;
   max-height: calc(100vh - 40px);
 }
 
-.sidebar h1 {
+.panel h1 {
   margin: 0 0 6px;
   font-size: 32px;
   letter-spacing: 1px;
   text-transform: uppercase;
-  color: #b79cff;
+  color: #ff7ad9;
 }
 
-.sidebar h2 {
+.panel h2 {
   margin: 22px 0 4px;
   font-size: 13px;
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: #ff7ad9;
+  color: #b79cff;
 }
 
-.intro { margin: 0 0 6px; font-size: 14px; line-height: 1.55; color: #dccbea; }
-.note { margin: 4px 0 10px; font-size: 12px; line-height: 1.5; color: #b3a0c6; }
+.lede { margin: 0 0 6px; font-size: 14px; line-height: 1.55; color: #dccbea; }
+.hint { margin: 4px 0 10px; font-size: 12px; line-height: 1.5; color: #b3a0c6; }
 .fineprint { margin: 16px 0 0; font-size: 11px; line-height: 1.5; color: #8d7aa3; }
 
 .field { display: block; margin: 10px 0; font-size: 13px; }
@@ -60,13 +60,14 @@ body {
   padding: 9px 10px;
   border: 1px solid #64407f;
   border-radius: 8px;
-  background: #14081f;
+  background: #160a20;
   color: #fff;
   font: inherit;
 }
-.field input[type="range"] { width: 100%; accent-color: #b79cff; }
+.field input[type="range"] { width: 100%; accent-color: #ff7ad9; }
+.field .group { display: flex; margin-top: 5px; }
 .check { display: block; margin: 10px 0; font-size: 13px; }
-.check input { accent-color: #b79cff; }
+.check input { accent-color: #ff7ad9; }
 
 button {
   padding: 9px 12px;
@@ -79,18 +80,18 @@ button {
   cursor: pointer;
 }
 button:hover { background: #4e2c6a; }
-button.active { background: #b79cff; border-color: #b79cff; color: #14081f; }
+button.active { background: #ff7ad9; border-color: #ff7ad9; color: #160a20; }
 
-.upload {
+.upload-btn {
   display: inline-block;
   padding: 10px 14px;
   border-radius: 9px;
-  background: #ff7ad9;
-  color: #14081f;
+  background: #b79cff;
+  color: #160a20;
   cursor: pointer;
   font-size: 13px;
 }
-.upload input { display: none; }
+.upload-btn input { display: none; }
 
 .export-btn {
   width: 100%;
@@ -98,24 +99,24 @@ button.active { background: #b79cff; border-color: #b79cff; color: #14081f; }
   padding: 13px;
   border: none;
   font-size: 16px;
-  background: linear-gradient(90deg, #7c5dfa, #ff2d92 70%, #ff7a18);
+  background: linear-gradient(90deg, #ff2d92, #7c5dfa 55%, #00e5ff);
 }
 .export-btn:hover { filter: brightness(1.12); }
 
-.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-.btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.group { display: flex; gap: 6px; flex-wrap: wrap; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 .chip {
   padding: 5px 10px;
   border: 1px solid #64407f;
   border-radius: 20px;
-  background: #14081f;
+  background: #160a20;
   font-size: 12px;
   cursor: pointer;
 }
 .chip.active { border-color: #ff9e57; color: #ff9e57; }
 
-.stage {
+.preview {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -123,7 +124,7 @@ button.active { background: #b79cff; border-color: #b79cff; color: #14081f; }
   gap: 10px;
   min-width: 0;
 }
-.stage canvas {
+.preview canvas {
   max-width: 100%;
   max-height: calc(100vh - 120px);
   width: auto;
@@ -133,17 +134,17 @@ button.active { background: #b79cff; border-color: #b79cff; color: #14081f; }
   cursor: grab;
   touch-action: none;
 }
-.stage canvas:active { cursor: grabbing; }
+.preview canvas:active { cursor: grabbing; }
 
 #statusLine { min-height: 20px; margin: 10px 0 0; font-size: 13px; color: #9dffb0; }
 
 /* Screenshot scenes: the finished cover alone, edge to edge. */
 body.shot-cover { background: #000; }
-body.shot-cover .layout { display: block; padding: 0; }
-body.shot-cover .sidebar,
-body.shot-cover .stage .note { display: none; }
-body.shot-cover .stage { display: block; }
-body.shot-cover .stage canvas {
+body.shot-cover .page { display: block; padding: 0; }
+body.shot-cover .panel,
+body.shot-cover .preview .hint { display: none; }
+body.shot-cover .preview { display: block; }
+body.shot-cover .preview canvas {
   display: block;
   width: 100vw;
   height: 100vh;
@@ -156,6 +157,6 @@ body.shot-cover .stage canvas {
 }
 
 @media (max-width: 860px) {
-  .layout { grid-template-columns: 1fr; }
-  .sidebar { max-height: none; }
+  .page { grid-template-columns: 1fr; }
+  .panel { max-height: none; }
 }
